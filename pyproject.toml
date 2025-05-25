@@ -1,0 +1,95 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ttc_alerts"
+version = "0.1.0"
+description = "A command-line tool for monitoring TTC service alerts"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "MIT"
+authors = [
+    { name = "Your Name", email = "your.email@example.com" }
+]
+dependencies = [
+    "requests>=2.31.0",
+    "gtfs-realtime-bindings>=1.0.0",
+    "pydantic>=2.6.1",
+    "pyyaml>=6.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.12.0",
+    "isort>=5.13.0",
+    "mypy>=1.8.0",
+    "types-requests>=2.31.0",
+]
+
+[project.scripts]
+ttc-alerts = "ttc_alerts.views.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=ttc_alerts"
+
+[tool.coverage.run]
+source = ["ttc_alerts"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "pass",
+    "raise ImportError",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_optional = true
+strict_equality = true
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_any_unimported = true
+disallow_any_explicit = true
+disallow_any_expr = true
+disallow_any_decorated = true
+no_implicit_reexport = true
+extra-checks = true
+
+[[tool.mypy.overrides]]
+module = ["pydantic.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["gtfs_realtime_bindings.*"]
+ignore_missing_imports = true 
