@@ -8,9 +8,12 @@ import time
 import json
 from google.protobuf.json_format import MessageToJson
 from google.transit import gtfs_realtime_pb2
+from typing import Optional
 
 from ..models.alert import TTCAlert
 from ..models import filter_duplicates
+from ..models.config import AppConfig
+from ..controllers.telegram import TelegramController
 from ..utils.logging import setup_logging
 
 
@@ -36,6 +39,24 @@ class TTCAlertService:
     session.headers.update({
         'User-Agent': 'TTC-Alerts-Monitor/1.0'
     })
+
+    config: Optional[AppConfig] = None
+
+    _telegram_controller: Optional[TelegramController] = None
+
+    @classmethod
+    def setup_config(cls, config: AppConfig) -> None:
+        """Setup config"""
+
+        cls.config = config
+
+
+    @classmethod
+    def setup_telegram(cls, config: AppConfig) -> None:
+        """Setup Telegram notifications"""
+        if config.telegram:
+            cls._telegram_controller = TelegramController(config.telegram)
+            logger.info("Telegram notifications enabled")
 
     @classmethod
     def get_alerts(cls) -> list[TTCAlert]:
@@ -79,9 +100,25 @@ class TTCAlertService:
     def monitor_alerts(cls, interval_minutes: int = 1) -> None:
         """Monitor alerts continuously"""
 
+        def filter_user_alerts(alerts: dict[str, list[TTCAlert]], user_filters: Optional[list[str]] = None) -> dict[str, list[TTCAlert]]:
+            if not user_filters:
+                return alerts
+
+            user_alerts = {
+                "resolved": [],
+                "new": [],
+            }
+            for alert_state in ["resolved", "new"]:
+                for user_filter in user_filters:
+                    for alert in alerts[alert_state]:
+                        if user_filter in str(alert):
+                            user_alerts[alert_state].append(alert)
+
+            return user_alerts
+
         logger.info(f"Starting alert monitoring (checking every {interval_minutes} minutes)")
 
-        current_alerts =[]
+        current_alerts = []
         
         while True:
             try:
@@ -90,12 +127,23 @@ class TTCAlertService:
 
                 alerts = cls.compare_alerts(previous_alerts, current_alerts)
                 logger.info("*" * 100)
+
                 if alerts["resolved"]:
                     logger.info(f"RESOLVED:\n\t{"\n\t".join(str(alert) for alert in alerts["resolved"])}")
                 if alerts["unresolved"]:
                     logger.info(f"UNRESOLVED:\n\t{"\n\t".join(str(alert) for alert in alerts["unresolved"])}")
                 if alerts["new"]:
                     logger.info(f"NEW:\n\t{"\n\t".join(str(alert) for alert in alerts["new"])}")
+                # Send Telegram notifications if enabled
+                if cls._telegram_controller:
+
+                    for user in cls.config.users:
+                        user_alerts = filter_user_alerts(alerts=alerts, user_filters=user.filters)
+                        if user_alerts["resolved"]:
+                            cls._telegram_controller.notify_alerts("resolved", user_alerts["resolved"], user.chat_id)
+                        if user_alerts["new"]:
+                            cls._telegram_controller.notify_alerts("new", user_alerts["new"], user.chat_id)
+
 
                 logger.info(f"\nNext check in {interval_minutes} minutes...")
                 logger.info("*" * 100)

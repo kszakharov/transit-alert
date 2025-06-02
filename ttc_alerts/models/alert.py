@@ -11,14 +11,8 @@ BAD_SUFFIXES: list[str] = [
 
 
 class TTCAlert(BaseModel):
-    #header: str = Field(validation_alias=AliasPath("headerText", "translation", 0, "text"))
-    #description: str = Field(validation_alias=AliasPath("descriptionText", "translation", 0, "text"))
-    #cause: str = Field(validation_alias="cause")
-    #effect: str = Field(validation_alias="effect")
-    header: str = Field(alias=AliasPath("headerText", "translation", 0, "text"))
-    description: str = Field(alias=AliasPath("descriptionText", "translation", 0, "text"))
-    cause: str = Field(alias="cause")
-    effect: str = Field(alias="effect")
+    header: str = Field(validation_alias=AliasPath("headerText", "translation", 0, "text"))
+    description: str = Field(validation_alias=AliasPath("descriptionText", "translation", 0, "text"))
 
     def __hash__(self) -> int:
         return hash((self.header, self.description))
@@ -35,10 +29,15 @@ class TTCAlert(BaseModel):
             v = v.removesuffix(bad_suffix)
         return v
 
+    def model_post_init(self, __context) -> None:
+        if self.description.startswith(self.header):
+            self.header = self.header.split(": ", 1)[0]
+            self.description = self.description.split(": ", 1)[1]
+
     def format(self) -> str:
         """Format the alert for display."""
 
-        return f"Header: {self.header}\nDescription: {self.description}\nCause: {self.cause}\nEffect: {self.effect}"
+        return f"Header: {self.header}\nDescription: {self.description}"
 
     def __str__(self) -> str:
         return f"Header: {self.header}, Description: {self.description}"
