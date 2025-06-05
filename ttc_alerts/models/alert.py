@@ -32,7 +32,10 @@ class TTCAlert(BaseModel):
     def model_post_init(self, __context) -> None:
         if self.description.startswith(self.header):
             self.header = self.header.split(": ", 1)[0]
-            self.description = self.description.split(": ", 1)[1]
+            try:
+                self.description = self.description.split(": ", 1)[1]
+            except IndexError:
+                pass
 
     def format(self) -> str:
         """Format the alert for display."""
